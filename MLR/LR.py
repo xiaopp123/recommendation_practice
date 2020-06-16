@@ -52,7 +52,8 @@ def train_model(sess, model, epochs, print_every):
             _, loss, y_logits = sess.run([model.train_op, model.loss, model.y_hat], feed_dict=feed_dict)
             result.extend(y_logits)
         auc = roc_auc_score(train_y, result)
-        if epoch % print_every == 0 and epoch > 0:
+        print(auc)
+        if e % print_every == 0 and e > 0:
             print(auc)
 
 if __name__ == '__main__':
