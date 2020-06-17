@@ -1,16 +1,26 @@
 #encoding=utf-8
 import tensorflow as tf
+import math
 
 class AutoRec(object):
-    def __init__(self, num_items, hidden_neuron, lambda_v, optimizer_method, lr):
+    def __init__(self, num_items, num_users, args):
         self.num_items = num_items
-        self.hidden_neuron = hidden_neuron
-        self.lambda_v = lambda_v
-        self.optimizer_method = optimizer_method
-        self.lr = lr
-        self.global_step = tf.Variable(0, trainable=False)
-        self.grad_clip = True
+        self.num_users = num_users
 
+        self.hidden_neuron = args.hidden_neuron
+        self.lambda_v = args.lambda_value
+        self.optimizer_method = args.optimizer_method
+        self.batch_size = args.batch_size
+
+        self.num_batch = int(math.ceil(self.num_users / float(self.batch_size)))
+
+        self.base_lr = args.base_lr
+        self.global_step = tf.Variable(0, trainable=False)
+        self.grad_clip = args.grad_clip
+        self.decay_epoch_step = args.decay_epoch_step
+        self.decay_step = self.decay_epoch_step * self.num_batch
+        self.lr = tf.train.exponential_decay(self.base_lr, self.global_step,\
+                      self.decay_step, 0.96, staircase=True) 
 
     def add_placeholder(self):
         self.input_rating = tf.placeholder(dtype=tf.float32, shape=[None, self.num_items], name='input_rating')
@@ -64,7 +74,3 @@ class AutoRec(object):
         self.inference()
         self.add_loss()
         self.train_model()
-
-if __name__ == '__main__':
-    auto_rec = AutoRec(100, 50, 0.1, 'Adam', 0.5)
-    auto_rec.build_graph()
