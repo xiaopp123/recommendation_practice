@@ -20,7 +20,7 @@ parser.add_argument(
     '--epochs_per_eval', type=int, default=2,
     help='The number of training epochs to run between evaluations.')
 parser.add_argument(
-    '--batch_size', type=int, default=40, help='Number of examples per batch.')
+    '--batch_size', type=int, default=64, help='Number of examples per batch.')
 parser.add_argument(
     '--train_data', type=str, default='../MLR/data/adult.data.txt',
     help='Path to the training data.')
@@ -28,7 +28,7 @@ parser.add_argument(
     '--test_data', type=str, default='../MLR/data/adult.test.txt',
     help='Path to the test data.')
 parser.add_argument(
-    '--num_cross_layers', type=int, default=2,
+    '--num_cross_layers', type=int, default=4,
     help='The number of training epochs to run between evaluations.')
 
 parser.add_argument(
@@ -103,8 +103,10 @@ def build_cross_layers(x0, params):
 
 def build_deep_layers(x0, params):
     # Build the hidden layers, sized according to the 'hidden_units' param.
+    #batch normalize
     net = x0
-    hidden_units = [50, 50] 
+    #使用了两个隐层
+    hidden_units = [1024, 1024] 
     #to do
     for units in hidden_units:
         net = tf.layers.dense(net, units=units, activation=tf.nn.relu)
@@ -112,13 +114,17 @@ def build_deep_layers(x0, params):
 
 def build_model(features, labels, mode, params):
     columns = build_model_columns()
+    #对特征编码, 这里没有对one-hot向量使用embedding
     input_layer = tf.feature_column.input_layer(features = features, feature_columns = columns)
     
-    #https://blog.csdn.net/Dby_freedom/article/details/86502623
+    #deep和cross参考 https://blog.csdn.net/Dby_freedom/article/details/86502623
+    #cross层
     last_cross_layer = build_cross_layers(input_layer, params)
     
+    #deep层
     last_deep_layer =  build_deep_layers(input_layer, params)
 
+    #cross和deep的输出进行concate
     last_layer = tf.concat([last_cross_layer, last_deep_layer], 1)
     
     '''
@@ -128,6 +134,7 @@ def build_model(features, labels, mode, params):
     
     optimizer = tf.train.AdagradOptimizer(learning_rate=params['learning_rate'])
     '''
+
     logits = tf.layers.dense(last_layer, units=1, activation=None, use_bias=True)
     out_probs = tf.nn.sigmoid(logits)
     predictions = tf.cast(out_probs > 0.5, tf.float32, name='predict_labels')
@@ -136,16 +143,15 @@ def build_model(features, labels, mode, params):
     
     #定义损失函数
     loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(labels=labels, logits=logits))
-    acc = tf.metrics.accuracy(labels, predictions)
+    accuracy = tf.metrics.accuracy(labels, predictions)
 
     optimizer = tf.train.AdamOptimizer(learning_rate=0.0004)
-    train_op  = optimizer.minimize(loss = loss, global_step = tf.train.get_global_step())
-    print('acc', acc)
+    train_op = optimizer.minimize(loss = loss, global_step = tf.train.get_global_step())
 
     if mode == tf.estimator.ModeKeys.TRAIN:
         return tf.estimator.EstimatorSpec(mode, loss=loss, train_op=train_op)
     elif mode == tf.estimator.ModeKeys.EVAL:
-        return tf.estimator.EstimatorSpec(mode, loss=loss, eval_metric_ops={'accuracy':accuracy})
+        return tf.estimator.EstimatorSpec(mode, loss=loss, eval_metric_ops={'accuracy': accuracy})
     elif mode == tf.estimator.ModeKeys.PREDICT:
         return tf.estimator.EstimatorSpec(mode, predictions=predictions)
     else:
@@ -170,7 +176,6 @@ def input_fn(data_file=FLAGS.train_data, num_epochs=FLAGS.epochs_per_eval, shuff
         return sparse_strings.values
 
     def parse_csv(value):
-        print(value)
         columns = tf.decode_csv(value, record_defaults=_CSV_COLUMN_DEFAULTS)
         features = dict(zip(_CSV_COLUMNS, columns))
         features['workclass'] = process_list_column([features['workclass']])
@@ -180,30 +185,36 @@ def input_fn(data_file=FLAGS.train_data, num_epochs=FLAGS.epochs_per_eval, shuff
 
     dataset = tf.data.TextLineDataset(data_file)
     if shuffle:
-        dataset = dataset.shuffle(buffer_size=5000)
+        dataset = dataset.shuffle(buffer_size=15000)
     #num_parallel_calls并行计算
-    #dataset = dataset.map(parse_csv, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-    dataset = dataset.map(parse_csv)
+    dataset = dataset.map(parse_csv, num_parallel_calls=tf.data.experimental.AUTOTUNE)
     dataset = dataset.repeat(num_epochs)
     dataset = dataset.batch(batch_size)
-    iterator  = dataset.make_one_shot_iterator()
+    iterator = dataset.make_one_shot_iterator()
     features, labels = iterator.get_next()
     #element = iterator.get_next()
-    
     '''
     with tf.Session() as sess:
         for i in range(5):
             print(sess.run(element))
     '''
-
     return features, labels
 
 
 if __name__ == '__main__':
-    input_fn(FLAGS.train_data, FLAGS.epochs_per_eval, True, FLAGS.batch_size)
+    #input_fn(FLAGS.train_data, FLAGS.epochs_per_eval, True, FLAGS.batch_size)
     
+    #构建模型
     model = build_estimator(FLAGS.model_dir, FLAGS.model_type)
-    logging_hook = tf.train.LoggingTensorHook(every_n_iter=1, tensors={'loss': 'loss'})
     for n in range(FLAGS.train_epochs // FLAGS.epochs_per_eval):
-        print('ggggggg', n)
-        model.train(input_fn=input_fn)
+        #lambda的意义
+        model.train(input_fn=lambda:
+                input_fn(FLAGS.train_data, FLAGS.epochs_per_eval, True, FLAGS.batch_size))
+        results = model.evaluate(input_fn=lambda:
+                input_fn(FLAGS.test_data, 1, False, FLAGS.batch_size))
+        # 显示evaluation中的衡量指标
+        print('Results at epoch', (n + 1) * FLAGS.epochs_per_eval)
+        print('-' * 60)
+
+        for key in sorted(results):
+            print('%s: %s' % (key, results[key]))
