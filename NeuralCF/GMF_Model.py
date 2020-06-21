@@ -14,9 +14,9 @@ class GMF_Model(object):
         #self.items_embeddings = tf.keras.layers.Embedding(input_dim=self.num_items, output_dim=self.num_factors,\
         #    input_length=1, name='item_embeddings')
         self.users_embeddings = tf.get_variable("users_embeddings", shape=[self.num_users, self.num_factors], dtype=tf.float32,\
-            initializer=tf.random_uniform(), trainable=True)
+            trainable=True)
         self.items_embeddings = tf.get_variable("items_embeddings", shape=[self.num_items, self.num_factors], dtype=tf.float32,\
-            initializer=tf.random_uniform(), trainable=True)
+            trainable=True)
 
 
     def add_placeholder(self):
@@ -32,8 +32,8 @@ class GMF_Model(object):
 
         predict_vector = tf.multiply(self.user_latent, self.item_latent, name='multiply')
         
-        # Final prediction layer
-        self.prediction = tf.layers.dense(inputs=predict_vector, units=1, activation=tf.nn.relu, name='prediction')
+        # Final prediction layer, activation=tf.nn.relu之后loss不会降
+        self.prediction = tf.layers.dense(inputs=predict_vector, units=1, activation=None, name='prediction')
         # 去掉没用的维度
         self.logits = tf.squeeze(self.prediction, name='logits')
 
