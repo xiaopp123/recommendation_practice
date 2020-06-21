@@ -26,7 +26,7 @@ def parse_args():
                         help="Regularization for each layer")
     parser.add_argument('--num_neg', type=int, default=4,
                         help='Number of negative instances to pair with a positive instance.')
-    parser.add_argument('--lr', type=float, default=0.001,
+    parser.add_argument('--lr', type=float, default=0.01,
                         help='Learning rate.')
     parser.add_argument('--learner', nargs='?', default='adam',
                         help='Specify an optimizer: adagrad, adam, rmsprop, sgd')
@@ -52,14 +52,6 @@ def get_train_instances(train, num_negatives):
             user_input.append(u)
             item_input.append(j)
             labels.append(0)
-    #input_perm = np.random.permutation(len(user_input))
-    #users, items, labels_random = [], [], []
-    #for i in input_perm:
-    #    users.append(user_input[i])
-    #    items.append(item_input[i])
-    #    labels_random.append(labels[i])
-
-    #return users, items, labels_random
     return user_input, item_input, labels
 
 if __name__ == '__main__':

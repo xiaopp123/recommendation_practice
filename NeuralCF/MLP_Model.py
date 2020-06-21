@@ -34,7 +34,8 @@ class MLP_Model(object):
 
         #MLP layers
         for idx in range(1, self.num_layers):
-            vector = tf.layers.dense(vector, units=self.layers[idx], activation=tf.nn.relu, name='layer%d' % idx)
+            vector = tf.layers.dense(vector, units=self.layers[idx], kernel_initializer=tf.contrib.layers.xavier_initializer(),\
+                activation=tf.nn.relu, name='layer%d' % idx)
         #Final prediction
         self.prediction = tf.layers.dense(vector, units=1, activation=None, name='prediction')
         #logits
@@ -46,6 +47,7 @@ class MLP_Model(object):
     def train(self):
         if self.learner == 'adam':
             optimizer = tf.train.AdamOptimizer(learning_rate=self.lr)
+        
         self.train_op = optimizer.minimize(loss=self.loss, global_step=tf.train.get_global_step())
 
     def add_performance(self):
