@@ -12,5 +12,6 @@
 * [Deep&Cross](https://github.com/zhaop93/recommendation_practice/tree/master/DeepCross)
 
 
-###参考
+### 参考
 https://github.com/Johnson0722/CTR_Prediction
+https://github.com/Jesse-csj/TensorFlow_Practice
