@@ -10,3 +10,7 @@
 * [MLR](https://github.com/zhaop93/recommendation_practice/tree/master/MLR) 
 * [AutoRec](https://github.com/zhaop93/recommendation_practice/tree/master/AutoRec)
 * [Deep&Cross](https://github.com/zhaop93/recommendation_practice/tree/master/DeepCross)
+
+
+###参考
+https://github.com/Johnson0722/CTR_Prediction
